@@ -1,7 +1,7 @@
 import pandas as pd
 
 def clean(data, name):
-    indices = list(range(int(len(data) / 2)))
+    indices = list(range(int(data.shape[0] / 2)))
     columns = ["date", "away", "home", "away_score", "home_score", "away_ml", "home_ml", 
                "spread", "o/u"]
     output = pd.DataFrame(index = indices, columns = columns)
@@ -9,23 +9,23 @@ def clean(data, name):
 
     i = 0
     j = 0
-    while i < int(len(data) / 2):
-        output.date[i] = data.Date[j]
-        output.away[i] = data.Team[j]
-        output.home[i] = data.Team[j + 1]
-        output.away_score[i] = data.Final[j]
-        output.home_score[i] = data.Final[j + 1]
-        output.away_ml[i] = data.ML[j]
-        output.home_ml[i] = data.ML[j + 1]
-        if output.away_ml[i] < output.home_ml[i]:
+    while i < int(data.shape[0] / 2):
+        output.loc[i, "date"] = data.loc[j, "Date"]
+        output.loc[i, "away"] = data.loc[j, "Team"]
+        output.loc[i, "home"] = data.loc[j + 1, "Team"]
+        output.loc[i, "away_score"] = data.loc[j, "Final"]
+        output.loc[i, "home_score"] = data.loc[j + 1, "Final"]
+        output.loc[i, "away_ml"] = data.loc[j, "ML"]
+        output.loc[i, "home_ml"] = data.loc[j + 1, "ML"]
+        if output.loc[i, "away_ml"] < output.loc[i, "home_ml"]:
             try:
-                output.spread[i] = -1 * float(data.Close[j])
+                output.loc[i, "spread"] = -1 * float(data.loc[j, "Close"])
             except ValueError:
-                output.spread[i] = data.Close[j]
-            output["o/u"][i] = data.Close[j + 1]
+                output.loc[i, "spread"] = data.loc[j, "Close"]
+            output.loc[i, "o/u"] = data.loc[j + 1, "Close"]
         else:
-            output.spread[i] = data.Close[j + 1]
-            output["o/u"][i] = data.Close[j]
+            output.loc[i, "spread"] = data.loc[j + 1, "Close"]
+            output.loc[i, "o/u"] = data.loc[j, "Close"]
         i += 1
         j += 2
     
@@ -34,4 +34,4 @@ def clean(data, name):
 for year in range(2015, 2020):
     title = "ncaa football " + str(year) + ".xlsx"
     data = pd.read_excel(title)
-    clean(data, "cfb games " + str(year))
+    clean(data, "cfb games " + str(year + 10))
