@@ -1,5 +1,3 @@
-import pandas as pd
-
 d = {}
 d["Clemson"] = "CLEMSON"
 d["WakeForest"] = "WAKE-FOREST"
@@ -131,16 +129,3 @@ d["ULMonroe"] = "LOUISIANA-MONROE"
 d["TexasState"] = "TEXAS-STATE"
 d["ArkansasState"] = "ARKANSAS-STATE"
 d["SouthAlabama"] = "SOUTH-ALABAMA"
-
-def names(data, title):
-    i = 0
-    while i < len(data):
-        data.home[i] = d.get(data.home[i])
-        data.away[i] = d.get(data.away[i])
-        i += 1
-    data.to_csv(title, index = False)
-        
-for year in range(2015, 2020):
-    title = "cfb games " + str(year) + ".csv"
-    data = pd.read_csv(title)
-    names(data, title)

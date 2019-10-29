@@ -1,4 +1,5 @@
 import pandas as pd
+from fix_names import d
 
 def clean(data, name):
     indices = list(range(int(data.shape[0] / 2)))
@@ -11,8 +12,8 @@ def clean(data, name):
     j = 0
     while i < int(data.shape[0] / 2):
         output.loc[i, "date"] = data.loc[j, "Date"]
-        output.loc[i, "away"] = data.loc[j, "Team"]
-        output.loc[i, "home"] = data.loc[j + 1, "Team"]
+        output.loc[i, "away"] = d.get(data.loc[j, "Team"])
+        output.loc[i, "home"] = d.get(data.loc[j + 1, "Team"])
         output.loc[i, "away_score"] = data.loc[j, "Final"]
         output.loc[i, "home_score"] = data.loc[j + 1, "Final"]
         output.loc[i, "away_ml"] = data.loc[j, "ML"]
@@ -31,7 +32,7 @@ def clean(data, name):
     
     output.to_csv(name + ".csv", index = False)
     
-for year in range(2015, 2020):
+for year in range(2014, 2020):
     title = "ncaa football " + str(year) + ".xlsx"
     data = pd.read_excel(title)
-    clean(data, "cfb games " + str(year + 10))
+    clean(data, "cfb odds " + str(year + 10))
