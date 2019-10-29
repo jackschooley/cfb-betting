@@ -1,5 +1,7 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 from sportsreference.ncaaf.teams import Teams
+from sklearn import linear_model
 
 #collect team stats for each season
 stats2014 = Teams("2014").dataframes
@@ -70,22 +72,79 @@ def weighted_average(years, weights):
     weighted_stats = weighted_stats.div(sum(weights))
     return weighted_stats
 
-years = [stats2014[features], stats2015[features], stats2016[features], stats2017[features]]
+def create_game_stats(years, game_data, weights):
+    weighted_stats = weighted_average(years, weights)
+    for feature in features:
+        game_data.insert(game_data.shape[1], feature, 0)
+    for i in range(game_data.shape[0]):
+        away_team = game_data.at[i, "away"]
+        home_team = game_data.at[i, "home"]
+        away_stats = weighted_stats.loc[away_team]
+        home_stats = weighted_stats.loc[home_team]
+        game_stats = home_stats.sub(away_stats)
+        game_data.at[i, features] = game_stats
+
 weights = [n ** 2 for n in range(1, 5)]
-weighted_stats2017 = weighted_average(years, weights)
-for feature in features:
-    odds2017.insert(odds2017.shape[1], feature, 0)
+y2017 = [stats2014[features], stats2015[features], stats2016[features], stats2017[features]]
+y2018 = [stats2015[features], stats2016[features], stats2017[features], stats2018[features]]
+create_game_stats(y2017, odds2017, weights)
+create_game_stats(y2018, odds2018, weights)
 
-for i in range(odds2017.shape[0]):
-    away_team = odds2017.at[i, "away"]
-    home_team = odds2017.at[i, "home"]
-    away_stats = weighted_stats2017.loc[away_team]
-    home_stats = weighted_stats2017.loc[home_team]
-    game_stats = home_stats.sub(away_stats)
-    odds2017.at[i, features] = game_stats
+#run lasso after cross-validating
+x_lasso_train = odds2017[features]
+y_train = odds2017.home_score.sub(odds2017.away_score)
+lasso_cv = linear_model.LassoCV(cv = 10)
+lasso_cv.fit(x_lasso_train, y_train)
 
-#run lasso
+lasso = linear_model.Lasso(lasso_cv.alpha_)
+lasso.fit(x_lasso_train, y_train)
+selected_vars = []
+for i in range(len(lasso.coef_)):
+    if lasso.coef_[i]:
+        selected_vars.append(features[i])
 
-#run spread model
+#run spread model 
+x_train = x_lasso_train[selected_vars]
+reg = linear_model.LinearRegression()
+reg.fit(x_train, y_train)
+
+x_test = odds2018[selected_vars]
+predicted_margins = reg.predict(x_test)
+true_margins = odds2018.home_score.sub(odds2017.away_score)
 
 #test
+games = []
+probs = []
+thresholds = [x * 0.5 for x in range(22)]
+for threshold in thresholds:
+    picks = []
+    ats_winners = []
+    for i in range(odds2018.shape[0]):
+        try:
+            spread = float(odds2018.loc[i, "spread"])
+        except ValueError:
+            spread = 0
+        if predicted_margins[i] > spread + threshold:
+            picks.append(odds2018.loc[i, "home"])
+        elif predicted_margins[i] < spread - threshold:
+            picks.append(odds2018.loc[i, "away"])
+        else:
+            picks.append("no pick")
+        if true_margins[i] > spread:
+            ats_winners.append(odds2018.loc[i, "home"])
+        else:
+            ats_winners.append(odds2018.loc[i, "away"])
+        
+    wins = 0
+    losses = 0
+    for i in range(len(picks)):
+        if picks[i] == ats_winners[i]:
+            wins += 1
+        elif picks[i] != "no pick":
+            losses += 1
+    game = wins + losses
+    prob = wins / game
+    games.append(game)
+    probs.append(prob)
+
+plt.plot(games, probs)
