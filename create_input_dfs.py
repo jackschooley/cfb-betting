@@ -3,8 +3,6 @@ from sportsreference.ncaaf.schedule import Schedule
 from sportsreference.ncaaf.teams import Teams
 
 #collect team stats for each season
-stats2010 = Teams("2010").dataframes
-stats2011 = Teams("2011").dataframes
 stats2012 = Teams("2012").dataframes
 stats2013 = Teams("2013").dataframes
 stats2014 = Teams("2014").dataframes
@@ -14,8 +12,6 @@ stats2017 = Teams("2017").dataframes
 stats2018 = Teams("2018").dataframes
 
 #collect betting data
-odds2014 = pd.read_csv("cfb odds 2014.csv")
-odds2015 = pd.read_csv("cfb odds 2015.csv")
 odds2016 = pd.read_csv("cfb odds 2016.csv")
 odds2017 = pd.read_csv("cfb odds 2017.csv")
 odds2018 = pd.read_csv("cfb odds 2018.csv")
@@ -27,16 +23,12 @@ def fix_dates(data):
         date = str(data.at[n, "date"])
         data.loc[n, "date"] = date[:-2] + "-" + date[-2:]
 
-fix_dates(odds2014)
-fix_dates(odds2015)
 fix_dates(odds2016)
 fix_dates(odds2017)
 fix_dates(odds2018)
 fix_dates(odds2019)
 
-#drop Idaho from 2010-2017 stats
-stats2010 = stats2010.drop("IDAHO")
-stats2011 = stats2011.drop("IDAHO")
+#drop Idaho from 2012-2017 stats
 stats2012 = stats2012.drop("IDAHO")
 stats2013 = stats2013.drop("IDAHO")
 stats2014 = stats2014.drop("IDAHO")
@@ -44,48 +36,36 @@ stats2015 = stats2015.drop("IDAHO")
 stats2016 = stats2016.drop("IDAHO")
 stats2017 = stats2017.drop("IDAHO")
 
-#add in 2010-2013 stats for App State
+#add in 2012-2013 stats for App State
 appstate2014 = stats2014.loc["APPALACHIAN-STATE"]
-stats2010 = stats2010.append(appstate2014)
-stats2011 = stats2011.append(appstate2014)
 stats2012 = stats2012.append(appstate2014)
 stats2013 = stats2013.append(appstate2014)
 
-#add in 2010-2014 stats for Charlotte
+#add in 2012-2014 stats for Charlotte
 c2015 = stats2015.loc["CHARLOTTE"]
-stats2010 = stats2010.append(c2015)
-stats2011 = stats2011.append(c2015)
 stats2012 = stats2012.append(c2015)
 stats2013 = stats2013.append(c2015)
 stats2014 = stats2014.append(c2015)
 
-#add in 2010-2016 stats for Coastal Carolina
+#add in 2012-2016 stats for Coastal Carolina
 cc2017 = stats2017.loc["COASTAL-CAROLINA"]
-stats2010 = stats2010.append(cc2017)
-stats2011 = stats2011.append(cc2017)
 stats2012 = stats2012.append(cc2017)
 stats2013 = stats2013.append(cc2017)
 stats2014 = stats2014.append(cc2017)
 stats2015 = stats2015.append(cc2017)
 stats2016 = stats2016.append(cc2017)
 
-#add in 2010-2013 stats for Georgia Southern
+#add in 2012-2013 stats for Georgia Southern
 gsouth2014 = stats2014.loc["GEORGIA-SOUTHERN"]
-stats2010 = stats2010.append(gsouth2014)
-stats2011 = stats2011.append(gsouth2014)
 stats2012 = stats2012.append(gsouth2014)
 stats2013 = stats2013.append(gsouth2014)
 
-#add in 2010-2012 stats for Georgia State
+#add in 2012 stats for Georgia State
 gstate2013 = stats2013.loc["GEORGIA-STATE"]
-stats2010 = stats2010.append(gstate2013)
-stats2011 = stats2011.append(gstate2013)
 stats2012 = stats2012.append(gstate2013)
 
-#add in 2010-2017 stats for Liberty
+#add in 2012-2017 stats for Liberty
 liberty2018 = stats2018.loc["LIBERTY"]
-stats2010 = stats2010.append(liberty2018)
-stats2011 = stats2011.append(liberty2018)
 stats2012 = stats2012.append(liberty2018)
 stats2013 = stats2013.append(liberty2018)
 stats2014 = stats2014.append(liberty2018)
@@ -93,37 +73,15 @@ stats2015 = stats2015.append(liberty2018)
 stats2016 = stats2016.append(liberty2018)
 stats2017 = stats2017.append(liberty2018)
 
-#add in 2010-2013 stats for Old Dominion
+#add in 2012-2013 stats for Old Dominion
 od2014 = stats2014.loc["OLD-DOMINION"]
-stats2010 = stats2010.append(od2014)
-stats2011 = stats2011.append(od2014)
 stats2012 = stats2012.append(od2014)
 stats2013 = stats2013.append(od2014)
 
-#add in 2010-2011 stats for South Alabama
-sa2012 = stats2012.loc["SOUTH-ALABAMA"]
-stats2010 = stats2010.append(sa2012)
-stats2011 = stats2011.append(sa2012)
-
-#add in 2010-2011 stats for Texas State
-ts2012 = stats2012.loc["TEXAS-STATE"]
-stats2010 = stats2010.append(ts2012)
-stats2011 = stats2011.append(ts2012)
-
-#add in 2015, 2016 stats for UAB
+#add in 2015-2016 stats for UAB
 uab2017 = stats2017.loc["ALABAMA-BIRMINGHAM"]
 stats2015 = stats2015.append(uab2017)
 stats2016 = stats2016.append(uab2017)
-
-#add in 2010-2011 stats for UMass
-umass2012 = stats2012.loc["MASSACHUSETTS"]
-stats2010 = stats2010.append(umass2012)
-stats2011 = stats2011.append(umass2012)
-
-#add in 2010-2011 stats for UTSA
-utsa2012 = stats2012.loc["TEXAS-SAN-ANTONIO"]
-stats2010 = stats2010.append(utsa2012)
-stats2011 = stats2011.append(utsa2012)
 
 #create input data frame
 features = ["first_downs", "opponents_first_downs", "fumbles_lost", 
@@ -186,9 +144,11 @@ def contemp_stats(schedule, date, name, current_year):
         except AttributeError:
             if current_year:
                 new_date = input("Enter the updated date: ")
-                return contemp_stats(schedule, new_date, name)
+                return contemp_stats(schedule, new_date, name, current_year)
             else:
-                return pd.DataFrame(index = [0], columns = features)
+                #find a better way to "skip" this row
+                stats = stats.drop(0)
+                return stats
         if date in url:
             break
         if name.lower() in url:
