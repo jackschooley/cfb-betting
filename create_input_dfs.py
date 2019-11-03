@@ -175,13 +175,20 @@ def prior_weighted_average(years, weights):
     prior_weighted_stats = prior_weighted_stats.div(sum(weights[:len(years)]))
     return prior_weighted_stats
 
-def contemp_stats(schedule, date, name):
+def contemp_stats(schedule, date, name, current_year):
     stats = pd.DataFrame(index = [0], columns = features)
     stats = stats.fillna(0)
     i = 0
     for game in schedule:
         match = game.boxscore.dataframe
-        url = match.index[0]
+        try:
+            url = match.index[0]
+        except AttributeError:
+            if current_year:
+                new_date = input("Enter the updated date: ")
+                return contemp_stats(schedule, new_date, name)
+            else:
+                return pd.DataFrame(index = [0], columns = features)
         if date in url:
             break
         if name.lower() in url:
@@ -209,23 +216,44 @@ def weighted_stats(prior_stats, contemp_stats, weights):
         return mixed_stats
     return prior_stats
 
-def create_game_stats(prior_years, game_data, weights, year):
+def create_game_stats(prior_years, game_data, weights, year, loud = True):
+    if year == 2019:
+        current_year = True
+    else:
+        current_year = False
     prior_stats = prior_weighted_average(prior_years, weights)
+    schedules = {}
     for feature in features:
         game_data.insert(game_data.shape[1], feature, 0)
     for i in range(game_data.shape[0]):
+        if loud:
+            print(i)
         date = game_data.at[i, "date"]
         
         away_team = game_data.at[i, "away"]
         away_prior_stats = prior_stats.loc[away_team]
-        away_schedule = Schedule(away_team, year)
-        away_contemp_stats = contemp_stats(away_schedule, date, away_team)
+        if away_team in schedules:
+            away_schedule = schedules[away_team]
+        else:
+            try:
+                away_schedule = Schedule(away_team, year)
+            except:
+                continue
+            schedules[away_team] = away_schedule
+        away_contemp_stats = contemp_stats(away_schedule, date, away_team, current_year)
         away_stats = weighted_stats(away_prior_stats, away_contemp_stats, weights)
         
         home_team = game_data.at[i, "home"]
         home_prior_stats = prior_stats.loc[home_team]
-        home_schedule = Schedule(home_team, year)
-        home_contemp_stats = contemp_stats(home_schedule, date, home_team)
+        if home_team in schedules:
+            home_schedule = schedules[home_team]
+        else:
+            try:
+                home_schedule = Schedule(home_team, year)
+            except:
+                continue
+            schedules[home_team] = home_schedule
+        home_contemp_stats = contemp_stats(home_schedule, date, home_team, current_year)
         home_stats = weighted_stats(home_prior_stats, home_contemp_stats, weights)
         
         game_stats = home_stats.sub(away_stats)
@@ -233,5 +261,4 @@ def create_game_stats(prior_years, game_data, weights, year):
 
 weights = [n ** 2 for n in range(1, 5)]
 
-#481 rows takes about an hour and 40 minutes
-#so i think a full year of data should take about 2.5 hours
+#add "level" features too for over/unders

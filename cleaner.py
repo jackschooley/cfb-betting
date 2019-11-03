@@ -22,7 +22,7 @@ def clean(data, name):
             try:
                 output.loc[i, "spread"] = -1 * float(data.loc[j, "Close"])
             except ValueError:
-                output.loc[i, "spread"] = data.loc[j, "Close"]
+                output.loc[i, "spread"] = 0 #this clause should only catch pick 'ems
             output.loc[i, "o/u"] = data.loc[j + 1, "Close"]
         else:
             output.loc[i, "spread"] = data.loc[j + 1, "Close"]
@@ -32,7 +32,5 @@ def clean(data, name):
     
     output.to_csv(name + ".csv", index = False)
     
-for year in range(2014, 2020):
-    title = "ncaa football " + str(year) + ".xlsx"
-    data = pd.read_excel(title)
-    clean(data, "cfb odds " + str(year + 10))
+data = pd.read_excel("ncaa football 2019.xlsx")
+clean(data, "cfb odds 2019")
