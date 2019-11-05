@@ -219,6 +219,6 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
         game_stats = home_stats.sub(away_stats)
         game_data.at[i, features] = game_stats
 
-weights = [n ** 2 for n in range(1, 5)]
+weights = [n ** 2 for n in range(1, 6)]
 
 #add "level" features too for over/unders

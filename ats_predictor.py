@@ -66,7 +66,7 @@ lasso_reg.fit(x_lasso_train, y_train)
 #predictions["lasso"] = lasso_reg.predict(x_lasso_test)
 
 #principal component analysis
-pca = PCA("mle")
+pca = PCA(n_components = 0.9, svd_solver = "full")
 x_pca_train = pca.fit_transform(x_train)
 x_pca_test = pca.transform(x_test)
 
@@ -92,7 +92,7 @@ rf.fit(x_pca_train, y_train)
 #support vector machine
 svm = LinearSVR(max_iter = 10000000)
 svm.fit(x_pca_train, y_train)
-predictions["svm"] = svm.predict(x_pca_test)
+predictions["svm-0"] = svm.predict(x_pca_test)
 
 #test
 thresholds = [x * 0.5 for x in range(30)] #stop at 14.5 points
@@ -100,6 +100,8 @@ for method in predictions:
     predicted_margins = predictions[method]
     games = []
     probs = []
+    final_balances = []
+    total_bets = []
     for threshold in thresholds:
         picks = []
         ats_winners = []
@@ -122,6 +124,7 @@ for method in predictions:
         losses = 0
         pushes = 0
         for i in range(len(picks)):
+            spread = float(test.loc[i, "spread"])
             if picks[i] == ats_winners[i]:
                 wins += 1
             elif ats_winners[i] == "push":
@@ -132,6 +135,23 @@ for method in predictions:
         prob = wins / plays
         games.append(plays)
         probs.append(prob)
+        
+        budget = 1000
+        total_bet = 0
+        for i in range(test.shape[0]):
+            spread = float(test.loc[i, "spread"])
+            if picks[i] != "no pick":
+                bet = budget * 0.01
+                total_bet += bet
+                if picks[i] == ats_winners[i]:
+                    winning = bet * 10/11
+                    budget += winning
+                elif ats_winners[i] == "push":
+                    pass
+                elif picks[i] != "no pick":
+                    budget -= bet
+        final_balances.append(budget)
+        total_bets.append(total_bet)
     plt.plot(thresholds, probs)
 
 plt.title("accuracy comparison")
@@ -139,4 +159,3 @@ plt.legend(labels = predictions.keys())
 plt.axhline(0.55, color = "red")
 
 #i think i'm gonna go with the svm using principal components
-#i'll fiddle with the pca and svm later
