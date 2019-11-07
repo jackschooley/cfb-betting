@@ -12,7 +12,7 @@ games2017 = pd.read_csv("cfb games 2017.csv")
 games2018 = pd.read_csv("cfb games 2018.csv")
 games2019 = pd.read_csv("cfb games 2019.csv")
 
-features = ["first_downs", "opponents_first_downs", "fumbles_lost", 
+base_features = ["first_downs", "opponents_first_downs", "fumbles_lost", 
             "opponents_fumbles_lost", "interceptions", "opponents_interceptions", 
             "pass_attempts", "opponents_pass_attempts",  "pass_completions", 
             "opponents_pass_completions", "pass_touchdowns", "opponents_pass_touchdowns", 
@@ -23,16 +23,20 @@ features = ["first_downs", "opponents_first_downs", "fumbles_lost",
             "opponents_turnovers", "yards_from_penalties", 
             "opponents_yards_from_penalties"]
 
+diff_features = ["d_" + feature for feature in base_features]
+level_features = ["l_" + feature for feature in base_features]
+features = diff_features + level_features
+
 #subset for "competitive" data (doesn't include weeks 0-3 or bowl games)
 games2016 = games2016.iloc[134:681] #134-681
 games2017 = games2017.iloc[118:681] #118-681
 games2018 = games2018.iloc[134:734] #134-734
-games2019 = games2019.iloc[139:] #139-
+#games2019 = games2019.iloc[139:] #139-
 
 #specify test and train
-train = games2016
+train = games2019[:138]
 train = train.reset_index()
-test = games2017.append(games2018.append(games2019))
+test = games2019[139:]
 test = test.reset_index()
 
 x_train = train[features]
@@ -63,7 +67,7 @@ x_lasso_test = x_test[lasso_selected_vars]
 
 lasso_reg = linear_model.LinearRegression()
 lasso_reg.fit(x_lasso_train, y_train)
-#predictions["lasso"] = lasso_reg.predict(x_lasso_test)
+predictions["lasso"] = lasso_reg.predict(x_lasso_test)
 
 #principal component analysis
 pca = PCA(n_components = 0.9, svd_solver = "full")
@@ -72,7 +76,7 @@ x_pca_test = pca.transform(x_test)
 
 pca_reg = linear_model.LinearRegression()
 pca_reg.fit(x_pca_train, y_train)
-#predictions["pca"] = pca_reg.predict(x_pca_test)
+predictions["pca"] = pca_reg.predict(x_pca_test)
 
 #partial least squares
 pls = PLSSVD()
@@ -92,7 +96,7 @@ rf.fit(x_pca_train, y_train)
 #support vector machine
 svm = LinearSVR(max_iter = 10000000)
 svm.fit(x_pca_train, y_train)
-predictions["svm-0"] = svm.predict(x_pca_test)
+predictions["svm"] = svm.predict(x_pca_test)
 
 #test
 thresholds = [x * 0.5 for x in range(30)] #stop at 14.5 points

@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from sportsreference.ncaaf.schedule import Schedule
 from sportsreference.ncaaf.teams import Teams
@@ -16,17 +17,6 @@ odds2016 = pd.read_csv("cfb odds 2016.csv")
 odds2017 = pd.read_csv("cfb odds 2017.csv")
 odds2018 = pd.read_csv("cfb odds 2018.csv")
 odds2019 = pd.read_csv("cfb odds 2019.csv")
-
-#fix dates
-def fix_dates(data):
-    for n in range(data.shape[0]):
-        date = str(data.at[n, "date"])
-        data.loc[n, "date"] = date[:-2] + "-" + date[-2:]
-
-fix_dates(odds2016)
-fix_dates(odds2017)
-fix_dates(odds2018)
-fix_dates(odds2019)
 
 #drop Idaho from 2012-2017 stats
 stats2012 = stats2012.drop("IDAHO")
@@ -95,6 +85,12 @@ features = ["first_downs", "opponents_first_downs", "fumbles_lost",
             "opponents_turnovers", "yards_from_penalties", 
             "opponents_yards_from_penalties"]
 
+diff_features = ["d_" + feature for feature in features]
+level_features = ["l_" + feature for feature in features]
+
+diff_d = {feature:"d_" + feature for feature in features}
+level_d = {feature:"l_" + feature for feature in features}
+
 self_features = ["first_downs", "fumbles_lost", "interceptions", "pass_attempts", 
                  "pass_completions", "pass_touchdowns", "pass_yards", "penalties", 
                  "points_per_game", "rush_attempts", "rush_touchdowns", "rush_yards", 
@@ -124,6 +120,15 @@ away_self_d = {away_features[n]:self_features[n] for n in range(len(home_feature
 home_oppo_d = {home_features[n]:opponent_features[n] for n in range(len(home_features))}
 away_oppo_d = {away_features[n]:opponent_features[n] for n in range(len(home_features))}
 
+weights = [n ** 2 for n in range(1, 6)]
+
+#fix dates
+def fix_dates(data):
+    for n in range(data.shape[0]):
+        date = str(data.at[n, "date"])
+        data.loc[n, "date"] = date[:-2] + "-" + date[-2:]
+
+#create weighted average of past years' stats
 def prior_weighted_average(years, weights):
     prior_weighted_stats = pd.DataFrame(index = years[0].index, columns = features)
     prior_weighted_stats = prior_weighted_stats.fillna(0)
@@ -133,6 +138,7 @@ def prior_weighted_average(years, weights):
     prior_weighted_stats = prior_weighted_stats.div(sum(weights[:len(years)]))
     return prior_weighted_stats
 
+#create the stats from the current year that were current as of game time
 def contemp_stats(schedule, date, name, current_year):
     stats = pd.DataFrame(index = [0], columns = features)
     stats = stats.fillna(0)
@@ -145,10 +151,8 @@ def contemp_stats(schedule, date, name, current_year):
             if current_year:
                 new_date = input("Enter the updated date: ")
                 return contemp_stats(schedule, new_date, name, current_year)
-            else:
-                #find a better way to "skip" this row
-                stats = stats.drop(0)
-                return stats
+            stats.loc[0] = np.NaN
+            return stats.loc[0]
         if date in url:
             break
         if name.lower() in url:
@@ -167,6 +171,7 @@ def contemp_stats(schedule, date, name, current_year):
         stats = stats.div(i)
         return stats.loc[0]
 
+#merge weighted stats from previous years with contemporary stats
 def weighted_stats(prior_stats, contemp_stats, weights):
     if not contemp_stats.empty:
         prior_weighted = prior_stats.multiply(sum(weights[:-1]))
@@ -183,8 +188,11 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
         current_year = False
     prior_stats = prior_weighted_average(prior_years, weights)
     schedules = {}
-    for feature in features:
+    for feature in diff_features:
         game_data.insert(game_data.shape[1], feature, 0)
+    for feature in level_features:
+        game_data.insert(game_data.shape[1], feature, 0)
+    fix_dates(game_data)
     for i in range(game_data.shape[0]):
         if loud:
             print(i)
@@ -216,9 +224,10 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
         home_contemp_stats = contemp_stats(home_schedule, date, home_team, current_year)
         home_stats = weighted_stats(home_prior_stats, home_contemp_stats, weights)
         
-        game_stats = home_stats.sub(away_stats)
-        game_data.at[i, features] = game_stats
-
-weights = [n ** 2 for n in range(1, 6)]
-
-#add "level" features too for over/unders
+        diff_stats = home_stats.sub(away_stats)
+        diff_stats.rename(index = diff_d, inplace = True)
+        game_data.at[i, diff_features] = diff_stats
+        
+        level_stats = home_stats
+        level_stats.rename(index = level_d, inplace = True)
+        game_data.at[i, level_features] = level_stats
