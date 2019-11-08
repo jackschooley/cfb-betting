@@ -149,6 +149,7 @@ def contemp_stats(schedule, date, name, current_year):
             url = match.index[0]
         except AttributeError:
             if current_year:
+                #you'll have to do this twice (once for home and away)
                 new_date = input("Enter the updated date: ")
                 return contemp_stats(schedule, new_date, name, current_year)
             stats.loc[0] = np.NaN
@@ -231,5 +232,4 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
         level_stats = home_stats
         level_stats.rename(index = level_d, inplace = True)
         game_data.at[i, level_features] = level_stats
-        
-#drop any rows that are nan at the end
+    game_data.dropna(inplace = True)

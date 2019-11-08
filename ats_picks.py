@@ -60,6 +60,7 @@ level_features = ["l_" + feature for feature in features]
 diff_d = {feature:"d_" + feature for feature in features}
 level_d = {feature:"l_" + feature for feature in features}
 
+#create weighted stats
 for feature in diff_features:
     current_games.insert(current_games.shape[1], feature, 0)
 for feature in level_features:
@@ -68,16 +69,12 @@ weights = [n ** 2 for n in range(1, 6)]
 years = [stats2015[features], stats2016[features], stats2017[features], stats2018[features],
          stats2019[features]]
 
-def weighted_average(years, weights):
-    weighted_stats = pd.DataFrame(index = years[0].index, columns = features)
-    weighted_stats = weighted_stats.fillna(0)
-    for i in range(len(years)):
-        weight = years[i].multiply(weights[i])
-        weighted_stats = weighted_stats.add(weight)
-    weighted_stats = weighted_stats.div(sum(weights))
-    return weighted_stats
-
-weighted_stats = weighted_average(years, weights)
+weighted_stats = pd.DataFrame(index = years[0].index, columns = features)
+weighted_stats = weighted_stats.fillna(0)
+for i in range(len(years)):
+    weight = years[i].multiply(weights[i])
+    weighted_stats = weighted_stats.add(weight)
+weighted_stats = weighted_stats.div(sum(weights))
 
 for i in range(current_games.shape[0]):
     away_team = current_games.at[i, "away"]
@@ -98,7 +95,7 @@ test = current_games
 x_train = train[diff_features + level_features]
 x_test = test[diff_features + level_features]
 
-y_train = train.home_score - train.away_score
+y_train = train["spread"]
 
 #predict spreads
 pca = PCA(n_components = 0.8, svd_solver = "full", random_state = i + 1)
@@ -109,6 +106,50 @@ pca_reg = LinearRegression()
 pca_reg.fit(x_pca_train, y_train)
 predictions = pd.Series(pca_reg.predict(x_pca_test), name = "predicted_spread")
 
+#determine bet amount
+def wager(budget, difference, odds = -110):
+    def convert_odds(odds):
+        if odds > 0:
+            decimal_odds = odds + 1
+        else:
+            decimal_odds = 100 / -odds + 1
+        return round(decimal_odds, 3)
+    decimal_odds = convert_odds(odds)
+    proportion = abs(difference) * (decimal_odds - 1) / decimal_odds
+    bet = budget * min(proportion / 100, 0.05)
+    return round(bet, 2)
+
 #create prediction df
-predictions = round(predictions * 2) / 2
-predicted_spreads = current_games[["away", "home"]].join(predictions)
+core = ["away", "home", "spread", "away_odds", "home_odds"]
+predicted_spreads = current_games[core].join(predictions)
+
+#generate bets
+budget = 100
+threshold = 4.5
+cutoff = 18
+picks = []
+bets = []
+differences = predicted_spreads.predicted_spread - predicted_spreads.spread
+for i in range(predicted_spreads.shape[0]):
+    if abs(predicted_spreads.at[i, "spread"]) < cutoff:
+        if differences[i] < -threshold:
+            picks.append(predicted_spreads.at[i, "away"])
+            odds = predicted_spreads.at[i, "away_odds"]
+            bet = wager(budget, differences[i], odds)
+            bets.append(bet)
+        elif differences[i] > threshold:
+            picks.append(predicted_spreads.at[i, "home"])
+            odds = predicted_spreads.at[i, "home_odds"]
+            bet = wager(budget, differences[i], odds)
+            bets.append(bet)
+        else:
+            picks.append("no pick")
+            bets.append(0)
+    else:
+        picks.append("no pick")
+        bets.append(0)
+        
+picks = pd.Series(picks, name = "picks")
+bets = pd.Series(bets, name = "bets")
+predicted_spreads = predicted_spreads.join([picks, bets])
+print("Done.")

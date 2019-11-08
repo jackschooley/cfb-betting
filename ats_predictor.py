@@ -66,6 +66,20 @@ svm = LinearSVR(epsilon = 0.5, max_iter = 10000000)
 svm.fit(x_pca_train, y_train)
 predictions["svm"] = svm.predict(x_pca_test)
 
+#determine bet amount
+def wager(budget, spread, prediction, odds = -110):
+    def convert_odds(odds):
+        if odds > 0:
+            decimal_odds = odds + 1
+        else:
+            decimal_odds = 100 / -odds + 1
+        return round(decimal_odds, 3)
+    decimal_odds = convert_odds(odds)
+    difference = abs(prediction - spread)
+    proportion = difference * (decimal_odds - 1) / decimal_odds
+    bet = budget * proportion / 100
+    return bet
+    
 #test
 thresholds = [x * 0.5 for x in range(22)] #stop at 10.5 points
 for method in predictions:
@@ -111,12 +125,11 @@ for method in predictions:
         probs.append(prob)
         
         budget = 100
-        total_bet = 0
         for i in range(test.shape[0]):
             spread = test.loc[i, "spread"]
+            prediction = predicted_margins[i]
             if picks[i] != "no pick":
-                bet = 5
-                total_bet += bet
+                bet = wager(budget, spread, prediction)
                 if picks[i] == ats_winners[i]:
                     winning = bet * 10/11
                     budget += winning
@@ -125,11 +138,12 @@ for method in predictions:
                 elif picks[i] != "no pick":
                     budget -= bet
         final_balances.append(budget)
-        total_bets.append(total_bet)
-    plt.plot(thresholds, final_balances)
+    #plt.plot(thresholds, probs) #plot probabilities as a function of threshold
+    plt.plot(thresholds, final_balances) #plot final balances as a function of threshold
 
 plt.title("accuracy comparison")
 plt.legend(labels = predictions.keys())
-plt.axhline(100, color = "red")
+#plt.axhline(0.55, color = "red") #use when plotting probabilities
+plt.axhline(100, color = "red") #use when plotting final balances
 
 #principal component regression is the way to go!!!
