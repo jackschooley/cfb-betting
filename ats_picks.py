@@ -1,7 +1,7 @@
 import pandas as pd
 from sportsreference.ncaaf.teams import Teams
 from sklearn.decomposition import PCA
-from sklearn.svm import LinearSVR
+from sklearn.linear_model import LinearRegression
 
 #import team stats
 stats2015 = Teams("2015").dataframes
@@ -37,7 +37,10 @@ games2017 = pd.read_csv("cfb games 2017.csv")
 games2018 = pd.read_csv("cfb games 2018.csv")
 games2019 = pd.read_csv("cfb games 2019.csv")
 
-odds2019 = pd.read_csv("cfb odds 2019.csv")
+#subset
+games2018 = games2018.iloc[134:735]
+games2019 = games2019.iloc[139:]
+current_games = pd.read_csv("current games.csv")
 
 #create test stats
 features = ["first_downs", "opponents_first_downs", "fumbles_lost", 
@@ -51,8 +54,15 @@ features = ["first_downs", "opponents_first_downs", "fumbles_lost",
             "opponents_turnovers", "yards_from_penalties", 
             "opponents_yards_from_penalties"]
 
-current_games = odds2019[501:].reset_index()
-for feature in features:
+diff_features = ["d_" + feature for feature in features]
+level_features = ["l_" + feature for feature in features]
+
+diff_d = {feature:"d_" + feature for feature in features}
+level_d = {feature:"l_" + feature for feature in features}
+
+for feature in diff_features:
+    current_games.insert(current_games.shape[1], feature, 0)
+for feature in level_features:
     current_games.insert(current_games.shape[1], feature, 0)
 weights = [n ** 2 for n in range(1, 6)]
 years = [stats2015[features], stats2016[features], stats2017[features], stats2018[features],
@@ -72,28 +82,33 @@ weighted_stats = weighted_average(years, weights)
 for i in range(current_games.shape[0]):
     away_team = current_games.at[i, "away"]
     home_team = current_games.at[i, "home"]
-    game_stats = weighted_stats.loc[home_team] - weighted_stats.loc[away_team]
-    current_games.loc[i, features] = game_stats
+    
+    diff_stats = weighted_stats.loc[home_team] - weighted_stats.loc[away_team]
+    diff_stats.rename(index = diff_d, inplace = True)
+    current_games.loc[i, diff_features] = diff_stats
+    
+    level_stats = weighted_stats.loc[home_team]
+    level_stats.rename(index = level_d, inplace = True)
+    current_games.loc[i, level_features] = level_stats
 
 #specify test and train
-train = games2016.append(games2017.append(games2018.append(games2019)))
+train = games2018.append(games2019)
 test = current_games
 
-x_train = train[features]
-x_test = test[features]
+x_train = train[diff_features + level_features]
+x_test = test[diff_features + level_features]
 
-y_train = train.home_score.sub(train.away_score)
+y_train = train.home_score - train.away_score
 
-#fit model using 100 iterations
-iterations = pd.DataFrame(columns = range(test.shape[0]))
-for i in range(10):
-    pca = PCA(n_components = 0.9, svd_solver = "full", random_state = i + 1)
-    x_pca_train = pca.fit_transform(x_train)
-    x_pca_test = pca.transform(x_test)
-    for j in range(10):
-        svm = LinearSVR(max_iter = 10000000, random_state = j + 1)
-        svm.fit(x_pca_train, y_train)
-        iteration = pd.Series(svm.predict(x_pca_test))
-        iterations = iterations.append(iteration, ignore_index = True)
-        
-predictions = iterations.mean()
+#predict spreads
+pca = PCA(n_components = 0.8, svd_solver = "full", random_state = i + 1)
+x_pca_train = pca.fit_transform(x_train)
+x_pca_test = pca.transform(x_test)
+    
+pca_reg = LinearRegression()
+pca_reg.fit(x_pca_train, y_train)
+predictions = pd.Series(pca_reg.predict(x_pca_test), name = "predicted_spread")
+
+#create prediction df
+predictions = round(predictions * 2) / 2
+predicted_spreads = current_games[["away", "home"]].join(predictions)

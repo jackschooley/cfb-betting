@@ -231,3 +231,5 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
         level_stats = home_stats
         level_stats.rename(index = level_d, inplace = True)
         game_data.at[i, level_features] = level_stats
+        
+#drop any rows that are nan at the end
