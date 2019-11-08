@@ -8,11 +8,11 @@ This repository contains an against-the-spread (ATS) predictor for college footb
 [sportsbookreviewsonline.com](https://www.sportsbookreviewsonline.com/scoresoddsarchives/ncaafootball/ncaafootballoddsarchives.htm)
 
 There are currently five files in the repository:
-- ats_picks.py: Generates picks and bets for upcoming games.
-- ats_predictor.py: Looks for the best model and betting strategy by running simulations on past games.
-- cleaner.py: Cleans the historical odds spreadsheet into another spreadsheet that is easier to work with.
-- create_input_dfs.py: Takes the data from the two sources to create input stats for each game.
-- fix_names.py: Contains a dictionary which is used to convert names in cleaner.py.
+- ***ats_picks.py***: Generates picks and bets for upcoming games.
+- ***ats_predictor.py***: Looks for the best model and betting strategy by running simulations on past games.
+- ***cleaner.py***: Cleans the historical odds spreadsheet into another spreadsheet that is easier to work with.
+- ***create_input_dfs.py***: Takes the data from the two sources to create input stats for each game.
+- ***fix_names.py***: Contains a dictionary which is used to convert names in *cleaner.py*.
 
 ## How to Use
 
