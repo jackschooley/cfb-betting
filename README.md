@@ -29,6 +29,7 @@ predicting nonconference games.
 these games.
 - Injuries: obviously if a team loses their star QB (or RB, WR, etc.) for a game, the model's accuracy for predicting that game is heavily
 in doubt.
+- Motivation: this is especially apparent for bowl games, in which some teams have much more to prove than others. The jury is still out on whether the model can perform well for bowl games.
 
 ## What's Next
 
