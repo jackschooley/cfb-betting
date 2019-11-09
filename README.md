@@ -16,9 +16,9 @@ There are currently five files in the repository:
 
 ## How to Use
 
-The ATS predictor should have upwards of 60% accuracy when used on conference games starting in week 4 of the college football season. The
-model will generate picks and bets for nonconference games, as well as games before week 4, but there are some caveats to those games that
-make the model less reliable.
+The ATS predictor should have upwards of 60% accuracy when used on conference games starting in week 4 of the college football season. 
+The model will generate picks and bets for nonconference games, as well as games before week 4, but there are some caveats to those 
+games that make the model less reliable.
 
 ### What does the model not account for?
 
@@ -29,7 +29,8 @@ predicting nonconference games.
 these games.
 - Injuries: obviously if a team loses their star QB (or RB, WR, etc.) for a game, the model's accuracy for predicting that game is heavily
 in doubt.
-- Motivation: this is especially apparent for bowl games, in which some teams have much more to prove than others. The jury is still out on whether the model can perform well for bowl games.
+- Motivation: this is especially apparent for bowl games, in which some teams have much more to prove than others. The jury is still out 
+on whether the model can perform well for bowl games.
 
 ## What's Next
 
