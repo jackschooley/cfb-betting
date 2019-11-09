@@ -98,7 +98,7 @@ x_test = test[diff_features + level_features]
 y_train = train["spread"]
 
 #predict spreads
-pca = PCA(n_components = 0.8, svd_solver = "full", random_state = i + 1)
+pca = PCA(n_components = 0.8, svd_solver = "full")
 x_pca_train = pca.fit_transform(x_train)
 x_pca_test = pca.transform(x_test)
     
@@ -152,4 +152,11 @@ for i in range(predicted_spreads.shape[0]):
 picks = pd.Series(picks, name = "picks")
 bets = pd.Series(bets, name = "bets")
 predicted_spreads = predicted_spreads.join([picks, bets])
-print("Done.")
+
+#print bets
+for i in range(predicted_spreads.shape[0]):
+    series = predicted_spreads.loc[i]
+    if series["picks"] != "no pick":
+        pick = series["picks"]
+        amount = series["bets"]
+        print(amount, "on", pick)
