@@ -76,7 +76,7 @@ def wager(budget, spread, prediction, odds = -110):
         return round(decimal_odds, 3)
     decimal_odds = convert_odds(odds)
     difference = abs(prediction - spread)
-    proportion = difference * (decimal_odds - 1) / decimal_odds
+    proportion = difference / decimal_odds
     bet = budget * proportion / 100
     return bet
     
@@ -138,12 +138,10 @@ for method in predictions:
                 elif picks[i] != "no pick":
                     budget -= bet
         final_balances.append(budget)
-    #plt.plot(thresholds, probs) #plot probabilities as a function of threshold
-    plt.plot(thresholds, final_balances) #plot final balances as a function of threshold
+    plt.plot(thresholds, probs) #plot probabilities as a function of threshold
+    #plt.plot(thresholds, final_balances) #plot final balances as a function of threshold
 
 plt.title("accuracy comparison")
 plt.legend(labels = predictions.keys())
-#plt.axhline(0.55, color = "red") #use when plotting probabilities
-plt.axhline(100, color = "red") #use when plotting final balances
-
-#principal component regression is the way to go!!!
+plt.axhline(0.55, color = "red") #use when plotting probabilities
+#plt.axhline(100, color = "red") #use when plotting final balances

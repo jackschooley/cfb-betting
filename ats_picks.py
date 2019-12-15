@@ -66,8 +66,8 @@ for feature in diff_features:
 for feature in level_features:
     current_games.insert(current_games.shape[1], feature, 0)
 weights = [n ** 2 for n in range(1, 6)]
-years = [stats2015[features], stats2016[features], stats2017[features], stats2018[features],
-         stats2019[features]]
+years = [stats2015[features], stats2016[features], stats2017[features], 
+         stats2018[features], stats2019[features]]
 
 weighted_stats = pd.DataFrame(index = years[0].index, columns = features)
 weighted_stats = weighted_stats.fillna(0)
@@ -89,7 +89,7 @@ for i in range(current_games.shape[0]):
     current_games.loc[i, level_features] = level_stats
 
 #specify test and train
-train = games2018.append(games2019)
+train = games2018
 test = current_games
 
 x_train = train[diff_features + level_features]
@@ -115,7 +115,7 @@ def wager(budget, difference, odds = -110):
             decimal_odds = 100 / -odds + 1
         return round(decimal_odds, 3)
     decimal_odds = convert_odds(odds)
-    proportion = abs(difference) * (decimal_odds - 1) / decimal_odds
+    proportion = abs(difference) / decimal_odds
     bet = budget * min(proportion / 100, 0.05)
     return round(bet, 2)
 
