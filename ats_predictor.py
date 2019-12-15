@@ -1,15 +1,14 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import linear_model
+from sklearn import metrics
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import LinearSVR
 
 #import data
-games2016 = pd.read_csv("cfb games 2016.csv")
 games2017 = pd.read_csv("cfb games 2017.csv")
 games2018 = pd.read_csv("cfb games 2018.csv")
-games2019 = pd.read_csv("cfb games 2019.csv")
 
 base_features = ["first_downs", "opponents_first_downs", "fumbles_lost", 
             "opponents_fumbles_lost", "interceptions", "opponents_interceptions", 
@@ -27,44 +26,47 @@ level_features = ["l_" + feature for feature in base_features]
 features = diff_features + level_features
 
 #subset for "competitive" data (doesn't include weeks 0-3 or bowl games)
-games2016 = games2016.iloc[134:682] #134-682
-games2017 = games2017.iloc[118:682] #118-682
-games2018 = games2018.iloc[134:735] #134-735
-games2019 = games2019.iloc[139:] #139-
+games2017 = games2017.iloc[220:675] #115-675
+games2018 = games2018.iloc[242:715] #133-715
 
 #specify test and train
-train = games2018
+train = games2017
 train = train.reset_index()
-test = games2019[134:]
+test = games2018
 test = test.reset_index()
 
 x_train = train[features]
 x_test = test[features]
 
 y_train = train["spread"]
+y_test = test["spread"]
 true_margins = test.home_score - test.away_score
 
-#create dictionary to store predicted margins
+#create dictionary to store predicted margins and mse
 predictions = {}
+mse = {}
 
 #principal component analysis
-pca = PCA(n_components = 0.8, svd_solver = "full")
+pca = PCA(n_components = "mle")
 x_pca_train = pca.fit_transform(x_train)
 x_pca_test = pca.transform(x_test)
 
 pca_reg = linear_model.LinearRegression()
 pca_reg.fit(x_pca_train, y_train)
 predictions["linear"] = pca_reg.predict(x_pca_test)
+mse["linear"] = metrics.mean_squared_error(y_test, predictions["linear"])
 
 #random forest
-rf = RandomForestRegressor(100)
-rf.fit(x_pca_train, y_train)
-predictions["rf"] = rf.predict(x_pca_test)
+rf = RandomForestRegressor(1000)
+rf.fit(x_train, y_train)
+predictions["rf"] = rf.predict(x_test)
+mse["rf"] = metrics.mean_squared_error(y_test, predictions["rf"])
 
 #support vector machine
-svm = LinearSVR(epsilon = 0.5, max_iter = 10000000)
-svm.fit(x_pca_train, y_train)
-predictions["svm"] = svm.predict(x_pca_test)
+svm = LinearSVR(max_iter = 10000000)
+svm.fit(x_train, y_train)
+predictions["linear-svm"] = svm.predict(x_test)
+mse["linear-svm"] = metrics.mean_squared_error(y_test, predictions["linear-svm"])
 
 #determine bet amount
 def wager(budget, spread, prediction, odds = -110):
@@ -77,7 +79,7 @@ def wager(budget, spread, prediction, odds = -110):
     decimal_odds = convert_odds(odds)
     difference = abs(prediction - spread)
     proportion = difference / decimal_odds
-    bet = budget * proportion / 100
+    bet = budget * max(proportion, 5) / 100
     return bet
     
 #test
@@ -93,7 +95,7 @@ for method in predictions:
         ats_winners = []
         for i in range(test.shape[0]):
             spread = float(test.loc[i, "spread"])
-            if abs(spread) > 18:
+            if abs(spread) > 21:
                 picks.append("no pick")
             elif predicted_margins[i] > spread + threshold:
                 picks.append(test.loc[i, "home"])
