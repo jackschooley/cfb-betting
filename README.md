@@ -34,5 +34,6 @@ on whether the model can perform well for bowl games.
 
 ## What's Next
 
+- A web scraper for current betting lines
 - An over/under predictor.
 - A moneyline betting strategy.
