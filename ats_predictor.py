@@ -1,12 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn import feature_selection
 from sklearn import linear_model
 from sklearn import metrics
 from sklearn.decomposition import PCA
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.svm import LinearSVR
 
 #import data
+games2015 = pd.read_csv("cfb games 2015.csv")
+games2016 = pd.read_csv("cfb games 2016.csv")
 games2017 = pd.read_csv("cfb games 2017.csv")
 games2018 = pd.read_csv("cfb games 2018.csv")
 
@@ -21,16 +22,25 @@ base_features = ["first_downs", "opponents_first_downs", "fumbles_lost",
             "opponents_turnovers", "yards_from_penalties", 
             "opponents_yards_from_penalties"]
 
-diff_features = ["d_" + feature for feature in base_features]
-level_features = ["l_" + feature for feature in base_features]
-features = diff_features + level_features
+away_features = ["a_" + feature for feature in base_features]
+home_features = ["h_" + feature for feature in base_features]
+
+conferences = ["acc", "american", "big-12", "big-ten", "cusa", "mac", "mwc", "pac-12", 
+               "sec", "sun-belt"]
+a_conferences = ["a_" + conference for conference in conferences]
+h_conferences = ["h_" + conference for conference in conferences]
+
+o_features = ["a_wins", "a_sos", "h_wins", "h_sos"]
+features = away_features + home_features + a_conferences + h_conferences + o_features
 
 #subset for "competitive" data (doesn't include weeks 0-3 or bowl games)
-games2017 = games2017.iloc[220:675] #115-675
-games2018 = games2018.iloc[242:715] #133-715
+games2015 = games2015.iloc[135:667] #135-667
+games2016 = games2016.iloc[136:683] #136-683
+games2017 = games2017.iloc[118:681] #118-681
+games2018 = games2018.iloc[134:721] #134-721
 
 #specify test and train
-train = games2017
+train = pd.concat([games2015, games2016, games2017])
 train = train.reset_index()
 test = games2018
 test = test.reset_index()
@@ -46,6 +56,47 @@ true_margins = test.home_score - test.away_score
 predictions = {}
 mse = {}
 
+#linear regression
+lin_reg = linear_model.LinearRegression()
+lin_reg.fit(x_train, y_train)
+predictions["linear"] = lin_reg.predict(x_test)
+mse["linear"] = metrics.mean_squared_error(y_test, predictions["linear"])
+
+#select for f significance
+f_vals, p_vals = feature_selection.f_regression(x_train, y_train)
+alpha = 0.0001
+f_vars = []
+for j in range(len(p_vals)):
+    if p_vals[j] < alpha:
+        f_vars.append(features[j])
+        
+f_reg = linear_model.LinearRegression()
+f_reg.fit(x_train[f_vars], y_train)
+predictions["f-vars"] = f_reg.predict(x_test[f_vars])
+mse["f-vars"] = metrics.mean_squared_error(y_test, predictions["f-vars"])
+
+#lasso
+lasso_cv = linear_model.LassoCV(cv = 10, max_iter = 100000)
+lasso_cv.fit(x_train, y_train)
+lasso = linear_model.Lasso(alpha = lasso_cv.alpha_, max_iter = 100000)
+lasso.fit(x_train, y_train)
+
+predictions["lasso"] = lasso.predict(x_test)
+mse["lasso"] = metrics.mean_squared_error(y_test, predictions["lasso"])
+
+#post lasso
+lasso_vars = []
+for j in range(len(lasso.coef_)):
+    if lasso.coef_[j] != 0:
+        lasso_vars.append(features[j])
+        
+x_lasso_train = x_train[lasso_vars]
+x_lasso_test = x_test[lasso_vars]
+post_lasso = linear_model.LinearRegression()
+post_lasso.fit(x_lasso_train, y_train)
+predictions["post-lasso"] = post_lasso.predict(x_lasso_test)
+mse["post-lasso"] = metrics.mean_squared_error(y_test, predictions["post-lasso"])
+    
 #principal component analysis
 pca = PCA(n_components = "mle")
 x_pca_train = pca.fit_transform(x_train)
@@ -53,20 +104,8 @@ x_pca_test = pca.transform(x_test)
 
 pca_reg = linear_model.LinearRegression()
 pca_reg.fit(x_pca_train, y_train)
-predictions["linear"] = pca_reg.predict(x_pca_test)
-mse["linear"] = metrics.mean_squared_error(y_test, predictions["linear"])
-
-#random forest
-rf = RandomForestRegressor(1000)
-rf.fit(x_train, y_train)
-predictions["rf"] = rf.predict(x_test)
-mse["rf"] = metrics.mean_squared_error(y_test, predictions["rf"])
-
-#support vector machine
-svm = LinearSVR(max_iter = 10000000)
-svm.fit(x_train, y_train)
-predictions["linear-svm"] = svm.predict(x_test)
-mse["linear-svm"] = metrics.mean_squared_error(y_test, predictions["linear-svm"])
+predictions["pca"] = pca_reg.predict(x_pca_test)
+mse["pca"] = metrics.mean_squared_error(y_test, predictions["pca"])
 
 #determine bet amount
 def wager(budget, spread, prediction, odds = -110):
@@ -81,6 +120,22 @@ def wager(budget, spread, prediction, odds = -110):
     proportion = difference / decimal_odds
     bet = budget * max(proportion, 5) / 100
     return bet
+
+#determine if you should make a play
+def action(predicted_margin, spread, threshold):
+    scale = abs(spread)
+    if scale > 21:
+        factor = 1
+    elif 14 < scale <= 21:
+        factor = 1
+    elif 7 < scale <= 14:
+        factor = 1
+    else:
+        factor = 1
+    if predicted_margin > spread + factor * threshold:
+        return "home"
+    if predicted_margin < spread - factor * threshold:
+        return "away"
     
 #test
 thresholds = [x * 0.5 for x in range(22)] #stop at 10.5 points
@@ -95,11 +150,11 @@ for method in predictions:
         ats_winners = []
         for i in range(test.shape[0]):
             spread = float(test.loc[i, "spread"])
-            if abs(spread) > 21:
+            if abs(spread) > 28:
                 picks.append("no pick")
-            elif predicted_margins[i] > spread + threshold:
+            elif action(predicted_margins[i], spread, threshold) == "home":
                 picks.append(test.loc[i, "home"])
-            elif predicted_margins[i] < spread - threshold:
+            elif action(predicted_margins[i], spread, threshold) == "away":
                 picks.append(test.loc[i, "away"])
             else:
                 picks.append("no pick")
@@ -145,5 +200,5 @@ for method in predictions:
 
 plt.title("accuracy comparison")
 plt.legend(labels = predictions.keys())
-plt.axhline(0.55, color = "red") #use when plotting probabilities
+plt.axhline(0.6, color = "red") #use when plotting probabilities
 #plt.axhline(100, color = "red") #use when plotting final balances

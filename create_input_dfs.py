@@ -10,9 +10,10 @@ stats2017 = Teams("2017").dataframes
 stats2018 = Teams("2018").dataframes
 
 #collect betting data
+odds2015 = pd.read_csv("cfb odds 2015.csv")
+odds2016 = pd.read_csv("cfb odds 2016.csv")
 odds2017 = pd.read_csv("cfb odds 2017.csv")
 odds2018 = pd.read_csv("cfb odds 2018.csv")
-odds2019 = pd.read_csv("cfb odds 2019.csv")
 
 #drop Idaho from 2012-2017 stats
 stats2014 = stats2014.drop("IDAHO")
@@ -54,11 +55,11 @@ features = ["first_downs", "opponents_first_downs", "fumbles_lost",
             "opponents_turnovers", "yards_from_penalties", 
             "opponents_yards_from_penalties"]
 
-diff_features = ["d_" + feature for feature in features]
-level_features = ["l_" + feature for feature in features]
+a_features = ["a_" + feature for feature in features]
+h_features = ["h_" + feature for feature in features]
 
-diff_d = {feature:"d_" + feature for feature in features}
-level_d = {feature:"l_" + feature for feature in features}
+away_d = {feature:"a_" + feature for feature in features}
+home_d = {feature:"h_" + feature for feature in features}
 
 self_features = ["first_downs", "fumbles_lost", "interceptions", "pass_attempts", 
                  "pass_completions", "pass_touchdowns", "pass_yards", "penalties", 
@@ -88,6 +89,27 @@ home_self_d = {home_features[n]:self_features[n] for n in range(len(home_feature
 away_self_d = {away_features[n]:self_features[n] for n in range(len(home_features))}
 home_oppo_d = {home_features[n]:opponent_features[n] for n in range(len(home_features))}
 away_oppo_d = {away_features[n]:opponent_features[n] for n in range(len(home_features))}
+
+other_features = ["conference", "wins", "strength_of_schedule"]
+
+conferences = ["acc", "american", "big-12", "big-ten", "cusa", "mac", "mwc", "pac-12", 
+               "sec", "sun-belt"]
+a_conferences = ["a_" + conference for conference in conferences]
+h_conferences = ["h_" + conference for conference in conferences]
+
+o_features = ["a_wins", "a_sos", "h_wins", "h_sos"]
+
+def insert(game_data):
+    for feature in a_features:
+        game_data.insert(game_data.shape[1], feature, 0)
+    for feature in h_features:
+        game_data.insert(game_data.shape[1], feature, 0)
+    for feature in a_conferences:
+        game_data.insert(game_data.shape[1], feature, 0)
+    for feature in h_conferences:
+        game_data.insert(game_data.shape[1], feature, 0)
+    for feature in o_features:
+        game_data.insert(game_data.shape[1], feature, 0.0)
 
 #fix dates
 def fix_dates(data):
@@ -119,16 +141,23 @@ def weighted_stats(prior_stats, contemp_stats, weights):
         return mixed_stats
     return prior_stats
 
+def get_boxscore(date, home, away, year):
+    if date[:2] == "01":
+        year += 1
+    url = str(year) + "-" + date + "-" + home.lower()
+    game = Boxscore(url).dataframe
+    if game is None:
+        url = str(year) + "-" + date + "-" + away.lower()
+        game = Boxscore(url).dataframe
+    return (game, url)
+
 def create_game_stats(prior_years, game_data, weights, year, loud = True):
-    prior_stats = prior_weighted_average(prior_years, weights)
-    for feature in diff_features:
-        game_data.insert(game_data.shape[1], feature, 0)
-    for feature in level_features:
-        game_data.insert(game_data.shape[1], feature, 0)
+    #prior_stats = prior_weighted_average(prior_years, weights)
+    prior_stats = prior_years[features]
+    descriptors = prior_years[other_features]
+    insert(game_data)
     fix_dates(game_data)
-    
     stat_dict = {}
-    
     for i in range(game_data.shape[0]):
         if loud:
             print(i)
@@ -138,44 +167,53 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
         home_team = game_data.at[i, "home"]
         
         #get current stats for each game
-        away_prior_stats = prior_stats.loc[away_team]
+        away_pstats = prior_stats.loc[away_team]
         away_data = stat_dict.get(away_team)
         if away_data:
             away_contemp_stats = away_data[0] / away_data[1]
-            away_stats = weighted_stats(away_prior_stats, away_contemp_stats.loc[0], weights)
+            away_stats = weighted_stats(away_pstats, away_contemp_stats.loc[0], weights)
         else:
             away_contemp_stats = pd.DataFrame()
-            away_stats = away_prior_stats
+            away_stats = away_pstats
         
-        home_prior_stats = prior_stats.loc[home_team]
+        home_pstats = prior_stats.loc[home_team]
         home_data = stat_dict.get(home_team)
         if home_data:
             home_contemp_stats = home_data[0] / home_data[1]
-            home_stats = weighted_stats(home_prior_stats, home_contemp_stats.loc[0], weights)
+            home_stats = weighted_stats(home_pstats, home_contemp_stats.loc[0], weights)
         else:
             home_contemp_stats = pd.DataFrame()
-            home_stats = home_prior_stats
+            home_stats = home_pstats
         
-        #input them into difference and level stats
-        diff_stats = home_stats.sub(away_stats)
-        diff_stats.rename(index = diff_d, inplace = True)
-        game_data.at[i, diff_features] = diff_stats
+        #input them into the game data
+        a_stats = away_stats
+        a_stats.rename(index = away_d, inplace = True)
+        game_data.at[i, a_features] = a_stats
         
-        level_stats = home_stats
-        level_stats.rename(index = level_d, inplace = True)
-        game_data.at[i, level_features] = level_stats
+        h_stats = home_stats
+        h_stats.rename(index = home_d, inplace = True)
+        game_data.at[i, h_features] = h_stats
+        
+        #input other features
+        away_desc = descriptors.loc[away_team]
+        away_conf = away_desc["conference"]
+        if away_conf != "independent":
+            game_data.at[i, "a_" + away_conf] = 1
+        game_data.at[i, "a_wins"] = away_desc["wins"]
+        game_data.at[i, "a_sos"] = float(away_desc["strength_of_schedule"])
+        
+        home_desc = descriptors.loc[home_team]
+        home_conf = home_desc["conference"]
+        if home_conf != "independent":
+            game_data.at[i, "h_" + home_conf] = 1
+        game_data.at[i, "h_wins"] = home_desc["wins"]
+        game_data.at[i, "h_sos"] = float(home_desc["strength_of_schedule"])
         
         #now, update stats using results of current game
-        url = str(year) + "-" + date + "-" + home_team.lower()
-        game = Boxscore(url).dataframe
+        game, url = get_boxscore(date, home_team, away_team, year)
         if game is None:
-            if year == 2019:
-                date = input("Enter the updated date: ")
-                url = date + "-" + home_team.lower()
-                game = Boxscore(url).dataframe
-            else:
-                game_data.drop(i, inplace = True)
-                continue
+            game_data.drop(i, inplace = True)
+            continue
         
         away_game = game.rename(index = {url:0}, columns = away_self_d)           
         away_game.rename(columns = home_oppo_d, inplace = True)
@@ -194,11 +232,9 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
             stat_dict[home_team] = (home_contemp_stats, stat_dict[home_team][1] + 1)
         else:
             stat_dict[home_team] = (home_game[features], 1)
+    game_data.dropna(inplace = True)
             
-prior_years = [stats2014[features], stats2015[features], stats2016[features]]
-weights = [n ** 2 for n in range(1, 5)]
-create_game_stats(prior_years, odds2017, weights, 2017)
-odds2017.to_csv("cfb games 2017.csv", index = False)
-
-#fix the url if it has the wrong team in it
-#other general cleaning
+prior_years = stats2014
+weights = [1 for n in range(2)]
+create_game_stats(prior_years, odds2015, weights, 2015)
+odds2015.to_csv("cfb games 2015.csv", index = False)
