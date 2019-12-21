@@ -14,6 +14,7 @@ odds2015 = pd.read_csv("cfb odds 2015.csv")
 odds2016 = pd.read_csv("cfb odds 2016.csv")
 odds2017 = pd.read_csv("cfb odds 2017.csv")
 odds2018 = pd.read_csv("cfb odds 2018.csv")
+odds2019 = pd.read_csv("cfb odds 2019.csv")
 
 #drop Idaho from 2012-2017 stats
 stats2014 = stats2014.drop("IDAHO")
@@ -90,25 +91,41 @@ away_self_d = {away_features[n]:self_features[n] for n in range(len(home_feature
 home_oppo_d = {home_features[n]:opponent_features[n] for n in range(len(home_features))}
 away_oppo_d = {away_features[n]:opponent_features[n] for n in range(len(home_features))}
 
-other_features = ["conference", "wins", "strength_of_schedule"]
+calculated_features = ["pass_completion_percentage", 
+                       "opponents_pass_completion_percentage",
+                       "pass_yards_per_attempt", "opponents_pass_yards_per_attempt",
+                       "plays", "opponents_plays", "points_per_play", 
+                       "opponents_points_per_play", "rush_yards_per_attempt", 
+                       "opponents_rush_yards_per_attempt", "yards_per_play",
+                       "opponents_yards_per_play"]
+a_calculated = ["a_" + feature for feature in calculated_features]
+h_calculated = ["h_" + feature for feature in calculated_features]
 
 conferences = ["acc", "american", "big-12", "big-ten", "cusa", "mac", "mwc", "pac-12", 
                "sec", "sun-belt"]
 a_conferences = ["a_" + conference for conference in conferences]
 h_conferences = ["h_" + conference for conference in conferences]
 
-o_features = ["a_wins", "a_sos", "h_wins", "h_sos"]
+other_features = ["conference", "simple_rating_system", "strength_of_schedule"]
+a_other = ["a_" + feature for feature in other_features[1:]]
+h_other = ["h_" + feature for feature in other_features[1:]]
 
 def insert(game_data):
     for feature in a_features:
         game_data.insert(game_data.shape[1], feature, 0)
-    for feature in h_features:
+    for feature in a_calculated:
         game_data.insert(game_data.shape[1], feature, 0)
     for feature in a_conferences:
         game_data.insert(game_data.shape[1], feature, 0)
+    for feature in a_other:
+        game_data.insert(game_data.shape[1], feature, 0.0)
+    for feature in h_features:
+        game_data.insert(game_data.shape[1], feature, 0)
+    for feature in h_calculated:
+        game_data.insert(game_data.shape[1], feature, 0)
     for feature in h_conferences:
         game_data.insert(game_data.shape[1], feature, 0)
-    for feature in o_features:
+    for feature in h_other:
         game_data.insert(game_data.shape[1], feature, 0.0)
 
 #fix dates
@@ -150,6 +167,33 @@ def get_boxscore(date, home, away, year):
         url = str(year) + "-" + date + "-" + away.lower()
         game = Boxscore(url).dataframe
     return (game, url)
+
+def calculate(game_data):
+    game_data["a_pass_completion_percentage"] = game_data["a_pass_completions"] / game_data["a_pass_attempts"]
+    game_data["a_opponents_pass_completion_percentage"] = game_data["a_opponents_pass_completions"] / game_data["a_opponents_pass_attempts"]
+    game_data["a_pass_yards_per_attempt"] = game_data["a_pass_yards"] / game_data["a_pass_attempts"]
+    game_data["a_opponents_pass_yards_per_attempt"] = game_data["a_opponents_pass_yards"] / game_data["a_opponents_pass_attempts"]
+    game_data["a_plays"] = game_data["a_pass_attempts"] + game_data["a_rush_attempts"]
+    game_data["a_opponents_plays"] = game_data["a_opponents_pass_attempts"] + game_data["a_opponents_pass_attempts"]
+    game_data["a_points_per_play"] = game_data["a_points_per_game"] / game_data["a_plays"]
+    game_data["a_opponents_points_per_play"] = game_data["a_points_against_per_game"] / game_data["a_opponents_plays"]
+    game_data["a_rush_yards_per_attempt"] = game_data["a_rush_yards"] / game_data["a_rush_attempts"]
+    game_data["a_opponents_rush_yards_per_attempt"] = game_data["a_opponents_rush_yards"] / game_data["a_opponents_rush_attempts"]
+    game_data["a_yards_per_play"] = game_data["a_yards"] / game_data["a_plays"]
+    game_data["a_opponents_yards_per_play"] = game_data["a_opponents_yards"] / game_data["a_opponents_plays"]
+
+    game_data["h_pass_completion_percentage"] = game_data["h_pass_completions"] / game_data["h_pass_attempts"]
+    game_data["h_opponents_pass_completion_percentage"] = game_data["h_opponents_pass_completions"] / game_data["h_opponents_pass_attempts"]
+    game_data["h_pass_yards_per_attempt"] = game_data["h_pass_yards"] / game_data["h_pass_attempts"]
+    game_data["h_opponents_pass_yards_per_attempt"] = game_data["h_opponents_pass_yards"] / game_data["h_opponents_pass_attempts"]
+    game_data["h_plays"] = game_data["h_pass_attempts"] + game_data["h_rush_attempts"]
+    game_data["h_opponents_plays"] = game_data["h_opponents_pass_attempts"] + game_data["h_opponents_pass_attempts"]
+    game_data["h_points_per_play"] = game_data["h_points_per_game"] / game_data["h_plays"]
+    game_data["h_opponents_points_per_play"] = game_data["h_points_against_per_game"] / game_data["h_opponents_plays"]
+    game_data["h_rush_yards_per_attempt"] = game_data["h_rush_yards"] / game_data["h_rush_attempts"]
+    game_data["h_opponents_rush_yards_per_attempt"] = game_data["h_opponents_rush_yards"] / game_data["h_opponents_rush_attempts"]
+    game_data["h_yards_per_play"] = game_data["h_yards"] / game_data["h_plays"]
+    game_data["h_opponents_yards_per_play"] = game_data["h_opponents_yards"] / game_data["h_opponents_plays"]
 
 def create_game_stats(prior_years, game_data, weights, year, loud = True):
     #prior_stats = prior_weighted_average(prior_years, weights)
@@ -199,15 +243,15 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
         away_conf = away_desc["conference"]
         if away_conf != "independent":
             game_data.at[i, "a_" + away_conf] = 1
-        game_data.at[i, "a_wins"] = away_desc["wins"]
-        game_data.at[i, "a_sos"] = float(away_desc["strength_of_schedule"])
+        game_data.at[i, "a_simple_rating_system"] = away_desc["simple_rating_system"]
+        game_data.at[i, "a_strength_of_schedule"] = away_desc["strength_of_schedule"]
         
         home_desc = descriptors.loc[home_team]
         home_conf = home_desc["conference"]
         if home_conf != "independent":
             game_data.at[i, "h_" + home_conf] = 1
-        game_data.at[i, "h_wins"] = home_desc["wins"]
-        game_data.at[i, "h_sos"] = float(home_desc["strength_of_schedule"])
+        game_data.at[i, "h_simple_rating_system"] = home_desc["simple_rating_system"]
+        game_data.at[i, "h_strength_of_schedule"] = home_desc["strength_of_schedule"]
         
         #now, update stats using results of current game
         game, url = get_boxscore(date, home_team, away_team, year)
@@ -233,8 +277,9 @@ def create_game_stats(prior_years, game_data, weights, year, loud = True):
         else:
             stat_dict[home_team] = (home_game[features], 1)
     game_data.dropna(inplace = True)
+    calculate(game_data)
             
-prior_years = stats2014
+prior_years = stats2018
 weights = [1 for n in range(2)]
-create_game_stats(prior_years, odds2015, weights, 2015)
-odds2015.to_csv("cfb games 2015.csv", index = False)
+create_game_stats(prior_years, odds2019, weights, 2019)
+odds2019.to_csv("cfb games 2019.csv", index = False)

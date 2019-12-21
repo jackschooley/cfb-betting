@@ -18,7 +18,7 @@ def clean(data, name):
         output.loc[i, "home_score"] = data.loc[j + 1, "Final"]
         output.loc[i, "away_ml"] = data.loc[j, "ML"]
         output.loc[i, "home_ml"] = data.loc[j + 1, "ML"]
-        if output.loc[i, "away_ml"] < output.loc[i, "home_ml"]:
+        if output.loc[i, "away_ml"] <= output.loc[i, "home_ml"]:
             try:
                 output.loc[i, "spread"] = -1 * float(data.loc[j, "Close"])
             except ValueError:
