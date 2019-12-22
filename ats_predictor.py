@@ -1,11 +1,10 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-from sklearn import feature_selection
 from sklearn import linear_model
 from sklearn import metrics
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.svm import LinearSVR
 
 #import data
 games2015 = pd.read_csv("cfb games 2015.csv")
@@ -14,9 +13,15 @@ games2017 = pd.read_csv("cfb games 2017.csv")
 games2018 = pd.read_csv("cfb games 2018.csv")
 games2019 = pd.read_csv("cfb games 2019.csv")
 
-base_features = ["turnovers", "opponents_turnovers", "pass_completion_percentage", 
-                 "opponents_pass_completion_percentage", "points_per_play", 
-                 "opponents_points_per_play", "yards_per_play", "opponents_yards_per_play"]
+base_features = ["first_downs", "opponents_first_downs", "fumbles_lost", 
+                 "opponents_fumbles_lost", "interceptions", "opponents_interceptions",
+                 "pass_attempts", "opponents_pass_attempts", "pass_touchdowns", 
+                 "opponents_pass_touchdowns", "rush_attempts", "opponents_rush_attempts", 
+                 "rush_touchdowns", "opponents_rush_touchdowns", 
+                 "pass_completion_percentage", "opponents_pass_completion_percentage", 
+                 "pass_yards_per_attempt", "opponents_pass_yards_per_attempt",
+                 "points_per_play", "opponents_points_per_play", "rush_yards_per_attempt", 
+                 "opponents_rush_yards_per_attempt"]
 
 a_features = ["a_" + feature for feature in base_features]
 h_features = ["h_" + feature for feature in base_features]
@@ -48,8 +53,8 @@ test = test.reset_index()
 x_train = train[features]
 x_test = test[features]
 
-y_train = train["spread"]
-y_test = test["spread"]
+y_train = np.array((train.away_score, train.home_score)).T
+y_test = np.array((test.away_score, test.home_score)).T
 true_margins = test.home_score - test.away_score
 
 #create dictionary to store predicted margins and mse
@@ -61,19 +66,6 @@ lin_reg = linear_model.LinearRegression()
 lin_reg.fit(x_train, y_train)
 predictions["linear"] = lin_reg.predict(x_test)
 mse["linear"] = metrics.mean_squared_error(y_test, predictions["linear"])
-
-#select for f significance
-f_vals, p_vals = feature_selection.f_regression(x_train, y_train)
-alpha = 0.0001
-f_vars = []
-for j in range(len(p_vals)):
-    if p_vals[j] < alpha:
-        f_vars.append(features[j])
-        
-f_reg = linear_model.LinearRegression()
-f_reg.fit(x_train[f_vars], y_train)
-predictions["f-vars"] = f_reg.predict(x_test[f_vars])
-mse["f-vars"] = metrics.mean_squared_error(y_test, predictions["f-vars"])
     
 #principal component analysis
 pca = PCA(n_components = "mle")
@@ -86,16 +78,11 @@ predictions["pca"] = pca_reg.predict(x_pca_test)
 mse["pca"] = metrics.mean_squared_error(y_test, predictions["pca"])
 
 #random forest
-rf = RandomForestRegressor(100)
+rf = RandomForestRegressor(1000, min_samples_split = 10, min_samples_leaf = 3, 
+                           max_features = "sqrt", bootstrap = False)
 rf.fit(x_train, y_train)
 predictions["rf"] = rf.predict(x_test)
 mse["rf"] = metrics.mean_squared_error(y_test, predictions["rf"])
-
-#support vector machine
-svm = LinearSVR(epsilon = 0.5, max_iter = 10000)
-svm.fit(x_train, y_train)
-predictions["svm"] = svm.predict(x_test)
-mse["svm"] = metrics.mean_squared_error(y_test, predictions["svm"])
 
 #determine bet amount
 def wager(budget, spread, prediction, odds = -110):
@@ -123,12 +110,13 @@ for method in predictions:
         picks = []
         ats_winners = []
         for i in range(test.shape[0]):
+            predicted_margin = predicted_margins[i][1] - predicted_margins[i][0]
             spread = float(test.loc[i, "spread"])
-            #if abs(spread) > 28:
-            #    picks.append("no pick")
-            if predicted_margins[i] - spread > threshold:
+            if abs(spread) > 28:
+                picks.append("no pick")
+            elif predicted_margin - spread > threshold:
                 picks.append(test.loc[i, "home"])
-            elif predicted_margins[i] - spread < -threshold:
+            elif predicted_margin - spread < -threshold:
                 picks.append(test.loc[i, "away"])
             else:
                 picks.append("no pick")
@@ -158,7 +146,7 @@ for method in predictions:
         budget = 100
         for i in range(test.shape[0]):
             spread = test.loc[i, "spread"]
-            prediction = predicted_margins[i]
+            prediction = predicted_margins[i][1] - predicted_margins[i][0]
             if picks[i] != "no pick":
                 bet = wager(budget, spread, prediction)
                 if picks[i] == ats_winners[i]:
