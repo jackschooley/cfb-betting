@@ -14,26 +14,16 @@ There are currently five files in the repository:
 - ***create_input_dfs.py***: Takes the data from the two sources to create input stats for each game.
 - ***fix_names.py***: Contains a dictionary which is used to convert names in *cleaner.py*.
 
-## How to Use
+## Findings
 
-The ATS predictor should have upwards of 60% accuracy when used on conference games starting in week 4 of the college football season. 
-The model will generate picks and bets for nonconference games, as well as games before week 4, but there are some caveats to those 
-games that make the model less reliable.
+I think that, at the moment, the model doesn't really show any significant ability to predict against-the-spread. Thus, I predict that as
+the number of games goes to infinity, the model will approach 50% ATS. This obviously does not really help.
 
-### What does the model not account for?
-
-- Strength of schedule: strength of schedule is not explicitly accounted for; however, teams from the same conference will have very
-similar strengths of schedule. Thus, this is likely a non-issue for conference games, but it does cast doubt on the model's accuracy on
-predicting nonconference games.
-- Games with large spreads (in either direction): the model is not good at predicting against large spreads, so don't trust it to bet on
-these games.
-- Injuries: obviously if a team loses their star QB (or RB, WR, etc.) for a game, the model's accuracy for predicting that game is heavily
-in doubt.
-- Motivation: this is especially apparent for bowl games, in which some teams have much more to prove than others. The jury is still out 
-on whether the model can perform well for bowl games.
+I think that the scores are predicted decently well, but as far as making money is concerned I'm not there yet. I think that this is the
+ceiling for the stats that I have. If I could get more in-depth data (i.e. 5 factors, play-by-play data), then perhaps the model's accuracy
+could be improved, but until then I can't really make any money using this model.
 
 ## What's Next
 
-- A web scraper for current betting lines
-- An over/under predictor.
+- A web scraper for current betting lines.
 - A moneyline betting strategy.
