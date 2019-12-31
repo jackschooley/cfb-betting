@@ -19,11 +19,12 @@ There are currently five files in the repository:
 I think that, at the moment, the model doesn't really show any significant ability to predict against-the-spread. Thus, I predict that as
 the number of games goes to infinity, the model will approach 50% ATS. This obviously does not really help.
 
-I think that the scores are predicted decently well, but as far as making money is concerned I'm not there yet. I think that this is the
-ceiling for the stats that I have. If I could get more in-depth data (i.e. 5 factors, play-by-play data), then perhaps the model's accuracy
-could be improved, but until then I can't really make any money using this model.
+I think that the scores are predicted decently well, but as far as making money is concerned I'm not there yet. 
 
-## What's Next
+## Where to Go Next
 
-- A web scraper for current betting lines.
-- A moneyline betting strategy.
+- Probably need better data, at the drive and play-by-play level (in line with the five factors)
+- Adjust game stats for opponent
+- I actually want to make picks using the opening spread, not the closing one
+- A web scraper for current betting lines
+- A moneyline betting strategy
