@@ -84,6 +84,10 @@ rf.fit(x_train, y_train)
 predictions["rf"] = rf.predict(x_test)
 mse["rf"] = metrics.mean_squared_error(y_test, predictions["rf"])
 
+#average
+#predictions["avg"] = sum(predictions.values()) / len(predictions)
+#mse["avg"] = metrics.mean_squared_error(y_test, predictions["avg"])
+
 #determine bet amount
 def wager(budget, spread, prediction, odds = -110):
     def convert_odds(odds):
@@ -100,6 +104,7 @@ def wager(budget, spread, prediction, odds = -110):
    
 #test
 thresholds = [x * 0.5 for x in range(22)] #stop at 10.5 points
+master_picks = {}
 for method in predictions:
     predicted_margins = predictions[method]
     games = []
@@ -126,6 +131,10 @@ for method in predictions:
                 ats_winners.append(test.loc[i, "away"])
             else:
                 ats_winners.append("push")
+        if method in master_picks:
+            master_picks[method].append(picks)
+        else:
+            master_picks[method] = [picks]
         
         wins = 0
         losses = 0
@@ -160,7 +169,38 @@ for method in predictions:
     plt.plot(thresholds, probs) #plot probabilities as a function of threshold
     #plt.plot(thresholds, final_balances) #plot final balances as a function of threshold
 
+probs = []
+for i in range(len(thresholds)):
+    picks = []
+    for j in range(len(ats_winners)):
+        pick = None
+        for method in master_picks:
+            if pick:
+                if master_picks[method][i][j] == pick:
+                    continue
+                else:
+                    pick = "no pick"
+                    break
+            pick = master_picks[method][i][j]
+        picks.append(pick)
+    
+    wins = 0
+    losses = 0
+    pushes = 0
+    for i in range(len(picks)):
+        spread = test.loc[i, "spread"]
+        if picks[i] == ats_winners[i]:
+            wins += 1
+        elif ats_winners[i] == "push":
+            pushes += 1
+        elif picks[i] != "no pick":
+            losses += 1
+    plays = wins + losses
+    prob = wins / plays
+    probs.append(prob)
+plt.plot(thresholds, probs)
+
 plt.title("accuracy comparison")
 plt.legend(labels = predictions.keys())
-plt.axhline(0.6, color = "red") #use when plotting probabilities
+plt.axhline(0.55, color = "red") #use when plotting probabilities
 #plt.axhline(100, color = "red") #use when plotting final balances
