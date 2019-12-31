@@ -19,11 +19,12 @@ There are currently five files in the repository:
 I think that, at the moment, the model doesn't really show any significant ability to predict against-the-spread. Thus, I predict that as
 the number of games goes to infinity, the model will approach 50% ATS. This obviously does not really help.
 
-I think that the scores are predicted decently well, but as far as making money is concerned I'm not there yet. 
+I think that the scores are predicted decently well, but as far as making money is concerned I'm not there yet. Luckily,
+[collegefootballdata.com] also has an API that has drive and play-by-play data (along with everything else I could want), so that's where
+I'll start when I resume this project. I'll make a new branch for that I think, so I'll need to learn how that works.
 
 ## Where to Go Next
 
-- Probably need better data, at the drive and play-by-play level (in line with the five factors)
 - Adjust game stats for opponent
 - I actually want to make picks using the opening spread, not the closing one
 - A web scraper for current betting lines
