@@ -20,7 +20,7 @@ I think that, at the moment, the model doesn't really show any significant abili
 the number of games goes to infinity, the model will approach 50% ATS. This obviously does not really help.
 
 I think that the scores are predicted decently well, but as far as making money is concerned I'm not there yet. Luckily,
-[collegefootballdata.com] also has an API that has drive and play-by-play data (along with everything else I could want), so that's where
+[collegefootballdata.com](http://collegefootballdata.com) also has an API that has drive and play-by-play data (along with everything else I could want), so that's where
 I'll start when I resume this project. I'll make a new branch for that I think, so I'll need to learn how that works.
 
 ## Where to Go Next
